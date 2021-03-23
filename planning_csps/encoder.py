@@ -216,5 +216,5 @@ class Encoder(object):
 if __name__ == "__main__":
     enc = Encoder('../domain/dock-worker-robot-domain.pddl',
                   '../domain/dock-worker-robot-problem.pddl',
-                  1)
+                  6)
     print(enc.csp)
