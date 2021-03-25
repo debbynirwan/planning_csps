@@ -20,6 +20,7 @@ License:
 """
 from encoder import Encoder, Assignment
 from typing import List, Optional, Set, Tuple, Dict
+import itertools
 
 
 class BacktrackAlgorithm(object):
@@ -30,10 +31,16 @@ class BacktrackAlgorithm(object):
     def __call__(self, assignments: Optional[List[Assignment]],
                  unassigned_variables: Optional[Set]) -> \
             Optional[List[Assignment]]:
-        if assignments is None:
-            assignments = []
+
         if unassigned_variables is None:
             unassigned_variables = self._csp.variables
+
+        if assignments is None:
+            assignments = []
+            for constraint in self._csp.constraints:
+                if len(constraint) == 1:
+                    assignments.append(constraint[0])
+                    unassigned_variables.remove(constraint[0].variable)
 
         if unassigned_variables == set():
             return assignments
@@ -41,11 +48,15 @@ class BacktrackAlgorithm(object):
         variable = unassigned_variables.pop()
         domains = self._csp.domains[variable]
 
+        print(f"Assigning variable {variable}")
+
         # update domains by checking constraints
         updated_domains = self._get_updated_domains(variable,
                                                     domains,
                                                     assignments,
                                                     self._csp.constraints)
+
+        print(f"Updated domains {updated_domains}")
 
         if updated_domains == set():
             # cannot assign value to variable, no solution available
@@ -83,9 +94,6 @@ class BacktrackAlgorithm(object):
         return False
 
     def _get_relevant_constraints(self, variable, assignments, constraints):
-        if not assignments:
-            return []
-
         relevant_constraints: List[Tuple[Assignment]] = []
         for constraint in constraints:
             if self._variable_in_constraint(variable, constraint, assignments):
@@ -101,28 +109,20 @@ class BacktrackAlgorithm(object):
 
     def _get_updated_domains(self, variable, domains, assignments,
                              constraints):
-        if not assignments:
-            return domains
-
         updated_domains = set()
         relevant_constraints = self._get_relevant_constraints(variable,
                                                               assignments,
                                                               constraints)
-        for relevant_constraint in relevant_constraints:
-            # 1. self constraint
-            if len(relevant_constraint) == 1:
-                for assignment in relevant_constraint:
-                    if assignment.variable == variable:
-                        updated_domains.add(assignment.value)
+        if not relevant_constraints:
+            return domains
 
-            # 2. others
-            for assignment in relevant_constraint:
-                for assignment2 in assignments:
-                    if assignment.variable == assignment2.variable and \
-                            assignment.value == assignment2.value:
-                        val = self._get_value_from_constraint(
-                            relevant_constraint, variable)
-                        updated_domains.add(val)
+        domain_assignments = []
+        for value in domains:
+            domain_assignments.append(Assignment(variable, value))
+        for pair in list(itertools.product(domain_assignments, assignments)):
+            for constraint in relevant_constraints:
+                if pair[0] in constraint and pair[1] in constraint:
+                    updated_domains.add(pair[0].value)
 
         return updated_domains
 
@@ -130,10 +130,14 @@ class BacktrackAlgorithm(object):
 if __name__ == "__main__":
     bt_algo = BacktrackAlgorithm('../domain/dock-worker-robot-domain.pddl',
                                  '../domain/dock-worker-robot-problem.pddl',
-                                 6)
+                                 1)
     solution = bt_algo(None, None)
-    action_solutions = []
-    for sol in solution:
-        if sol.variable[1] == 'act':
-            action_solutions.append(sol)
-    print(action_solutions)
+    if solution:
+        action_solutions = []
+        for sol in solution:
+            if sol.variable[1] == 'act':
+                action_solutions.append(sol)
+        import pprint
+        pprint.pp(action_solutions)
+    else:
+        print("Failed")

@@ -24,12 +24,21 @@ from typing import Dict, Tuple, Set, List
 
 class Assignment(object):
 
-    def __init__(self):
-        self.variable = None
-        self.value = None
+    def __init__(self, variable=None, value=None):
+        self.variable = variable
+        self.value = value
 
     def __repr__(self):
         return f'{self.variable} = {self.value}'
+
+    def __eq__(self, other):
+        if self.variable == other.variable and self.value == other.value:
+            return True
+        else:
+            return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class CSP(object):

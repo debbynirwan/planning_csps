@@ -67,8 +67,27 @@ class PlanningProblem(object):
                     [a.ground(st) for a in op.precondition_neg])
                 gop.effect_pos = set([a.ground(st) for a in op.effect_pos])
                 gop.effect_neg = set([a.ground(st) for a in op.effect_neg])
+                '''if self._constant_in_set('NIL', gop.precondition_pos) or \
+                        self._constant_in_set('NIL', gop.precondition_neg) or \
+                        self._constant_in_set('NIL', gop.effect_pos) or \
+                        self._constant_in_set('NIL', gop.effect_neg) or \
+                        self._constant_in_set('NO_CONTAINER',
+                                              gop.precondition_pos) or \
+                        self._constant_in_set('NO_CONTAINER',
+                                              gop.precondition_neg) or \
+                        self._constant_in_set('NO_CONTAINER',
+                                              gop.effect_pos) or \
+                        self._constant_in_set('NO_CONTAINER', gop.effect_neg):
+                    continue'''
                 ground_operators.append(gop)
         return ground_operators
+
+    @staticmethod
+    def _constant_in_set(constant, set_to_check):
+        for tup in set_to_check:
+            if constant in tup:
+                return True
+        return False
 
     def _get_ground_formulas(self) -> List[tuple]:
         ground_formulas = []
@@ -82,6 +101,8 @@ class PlanningProblem(object):
                 pred = [predicate.name]
                 for k, v in st.items():
                     pred.append(v)
+                '''if 'NIL' in pred or 'NO_CONTAINER' in pred:
+                    continue'''
                 ground_formulas.append(tuple(pred))
         return ground_formulas
 
