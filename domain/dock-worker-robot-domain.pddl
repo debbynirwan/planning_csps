@@ -7,11 +7,12 @@
   robot         ; holds at most 1 container, only 1 robot per location
   container)
 
+ (:constants nil - container)
+
  (:predicates
    (adjacent ?l1  ?l2 - location)       ; location ?l1 is adjacent ot ?l2
    (atl ?r - robot ?l - location)       ; robot ?r is at location ?l
-   (loaded ?r - robot ?c - container )  ; robot ?r is loaded with container ?c
-   (unloaded ?r - robot)                ; robot ?r is empty
+   (loaded ?r - robot ?c - container)   ; robot ?r is loaded with container ?c
    (in ?c - container ?l - location)    ; container ?c is within location ?l
    )
 
@@ -27,13 +28,11 @@
 ;; loads an empty robot with a container held by a nearby crane
  (:action load
      :parameters (?l - location ?c - container ?r - robot)
-     :precondition (and (atl ?r ?l) (in ?c ?l) (unloaded ?r))
-     :effect (and (loaded ?r ?c)
-                    (not (in ?c ?l)) (not (unloaded ?r)) ))
+     :precondition (and (atl ?r ?l) (in ?c ?l) (loaded ?r nil))
+     :effect (and (loaded ?r ?c) (not (in ?c ?l)) ))
 
 ;; unloads a robot holding a container with a nearby crane
  (:action unload
      :parameters (?l - location ?c - container ?r - robot)
      :precondition (and (atl ?r ?l) (loaded ?r ?c) )
-     :effect (and (unloaded ?r) (in ?c ?l)
-                    (not (loaded ?r ?c)) )) )
+     :effect (and (in ?c ?l) (loaded ?r nil) )) )

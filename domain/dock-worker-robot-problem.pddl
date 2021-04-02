@@ -17,13 +17,13 @@
    (atl robr loc1)
    (atl robq loc2)
 
-   (unloaded robr)
-   (unloaded robq)
+   (loaded robr nil)
+   (loaded robq nil)
    )
 
 ;; a2, b1
   (:goal
     (and
-      (in contb loc1)
-	  (in conta loc2)
+      (loaded robr contb)
+	  (loaded robq conta)
 	    )) )

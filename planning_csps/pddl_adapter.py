@@ -35,6 +35,13 @@ class PlanningProblem(object):
         self._goal_state = self._to_set_of_tuples(self._domain_problem.goals())
         self._actions = self._get_ground_operators()
         self._formulas = self._get_ground_formulas()
+        for formula in list(self._formulas):
+            if 'in' in formula and 'nil' in formula:
+                self._formulas.remove(formula)
+        for action in list(self._actions):
+            if action.operator_name == 'unload' and \
+                    action.variable_list['?c'] == 'nil':
+                self._actions.remove(action)
 
     @staticmethod
     def _type_symbols(variable_type, world_objects: dict):
@@ -67,18 +74,6 @@ class PlanningProblem(object):
                     [a.ground(st) for a in op.precondition_neg])
                 gop.effect_pos = set([a.ground(st) for a in op.effect_pos])
                 gop.effect_neg = set([a.ground(st) for a in op.effect_neg])
-                '''if self._constant_in_set('NIL', gop.precondition_pos) or \
-                        self._constant_in_set('NIL', gop.precondition_neg) or \
-                        self._constant_in_set('NIL', gop.effect_pos) or \
-                        self._constant_in_set('NIL', gop.effect_neg) or \
-                        self._constant_in_set('NO_CONTAINER',
-                                              gop.precondition_pos) or \
-                        self._constant_in_set('NO_CONTAINER',
-                                              gop.precondition_neg) or \
-                        self._constant_in_set('NO_CONTAINER',
-                                              gop.effect_pos) or \
-                        self._constant_in_set('NO_CONTAINER', gop.effect_neg):
-                    continue'''
                 ground_operators.append(gop)
         return ground_operators
 
@@ -101,8 +96,6 @@ class PlanningProblem(object):
                 pred = [predicate.name]
                 for k, v in st.items():
                     pred.append(v)
-                '''if 'NIL' in pred or 'NO_CONTAINER' in pred:
-                    continue'''
                 ground_formulas.append(tuple(pred))
         return ground_formulas
 

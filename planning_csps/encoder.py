@@ -40,8 +40,11 @@ class Assignment(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __hash__(self):
+        return hash(self.variable) + hash(self.value)
 
-class CSP(object):
+
+class PlanningCSP(object):
 
     def __init__(self):
         self.variables: Set = set()
@@ -74,8 +77,8 @@ class Encoder(object):
     def csp(self):
         return self._csp
 
-    def _encode(self) -> CSP:
-        csp = CSP()
+    def _encode(self) -> PlanningCSP:
+        csp = PlanningCSP()
         predicates = self._planning_problem.fluents
         actions = self._planning_problem.actions
         # 1. Variables and domains
@@ -83,18 +86,14 @@ class Encoder(object):
             if len(predicate) <= 1:
                 continue
             for j in range(self._plan_length + 1):
+                var = (j, predicate[0], predicate[1])
+                csp.variables.add(var)
+                if var not in csp.domains:
+                    csp.domains[var] = set()
                 if len(predicate) == 2:
-                    var = (j, predicate[0])
-                    csp.variables.add(var)
-                    if var not in csp.domains:
-                        csp.domains[var] = set()
                     csp.domains[var].add(True)
                     csp.domains[var].add(False)
                 elif len(predicate) == 3:
-                    var = (j, predicate[0], predicate[1])
-                    csp.variables.add(var)
-                    if var not in csp.domains:
-                        csp.domains[var] = set()
                     csp.domains[var].add(predicate[2])
 
         for j in range(self._plan_length):
@@ -107,17 +106,15 @@ class Encoder(object):
                     continue
                 csp.domains[var].add(action)
 
-        # 2. Initial State and Goal State Constraints
+        # 2. Initial State and Goal State Unary Constraints
         for state in self._planning_problem.initial_state:
             if 'adjacent' in state:
                 continue
             assignment = Assignment()
+            assignment.variable = (0, state[0], state[1])
             if len(state) == 2:
-                assignment.variable = (0, state[0])
                 assignment.value = True
             elif len(state) == 3:
-                assignment.variable = (0, state[0],
-                                       state[1])
                 assignment.value = state[2]
             csp.constraints.append((assignment,))
 
@@ -125,55 +122,55 @@ class Encoder(object):
             if 'adjacent' in state:
                 continue
             assignment = Assignment()
+            assignment.variable = (self._plan_length, state[0], state[1])
             if len(state) == 2:
-                assignment.variable = (self._plan_length, state[0])
                 assignment.value = True
             elif len(state) == 3:
-                assignment.variable = (self._plan_length, state[0],
-                                       state[1])
                 assignment.value = state[2]
             csp.constraints.append((assignment,))
 
-        # 3. Actions Constraints
+        # 3. Actions (Binary) Constraints
         for action in actions:
             if action.effect_pos.issubset(action.precondition_pos):
                 continue
-            constraint = tuple()
             for j in range(self._plan_length):
                 act_assignment = Assignment()
                 act_assignment.variable = (j, 'act')
                 act_assignment.value = action
-                constraint += (act_assignment,)
                 for precondition in action.precondition_pos:
                     if 'adjacent' in precondition:
                         continue
+                    constraint = tuple()
+                    constraint += (act_assignment,)
                     assignment = Assignment()
+                    assignment.variable = (j, precondition[0], precondition[1])
                     if len(precondition) == 2:
-                        assignment.variable = (j, precondition[0])
                         assignment.value = True
                     elif len(precondition) == 3:
-                        assignment.variable = (j, precondition[0],
-                                               precondition[1])
                         assignment.value = precondition[2]
                     constraint += (assignment,)
+                    csp.constraints.append(constraint)
                 for effect in action.effect_pos:
+                    constraint = tuple()
+                    constraint += (act_assignment,)
                     assignment = Assignment()
+                    assignment.variable = (j + 1, effect[0], effect[1])
                     if len(effect) == 2:
-                        assignment.variable = (j + 1, effect[0])
                         assignment.value = True
                     elif len(effect) == 3:
-                        assignment.variable = (j + 1, effect[0],
-                                               effect[1])
                         assignment.value = effect[2]
                     constraint += (assignment,)
+                    csp.constraints.append(constraint)
                 for effect in action.effect_neg:
+                    constraint = tuple()
+                    constraint += (act_assignment,)
                     assignment = Assignment()
                     if len(effect) > 2:
                         continue
                     assignment.variable = (j + 1, effect[0])
                     assignment.value = False
                     constraint += (assignment,)
-                csp.constraints.append(constraint)
+                    csp.constraints.append(constraint)
 
         # 4. Frame Axioms Constraints
         for action in actions:
@@ -181,49 +178,26 @@ class Encoder(object):
                 continue
             for j in range(self._plan_length):
                 effect_vars = set()
-                act_assignment = Assignment()
-                act_assignment.variable = (j, 'act')
-                act_assignment.value = action
-                assignment_bef = Assignment()
-                assignment_aft = Assignment()
                 for predicate in (action.effect_pos | action.effect_neg):
-                    if len(predicate) == 2:
-                        effect_vars.add((j, predicate[0]))
-                    elif len(predicate) == 3:
-                        effect_vars.add((j, predicate[0], predicate[1]))
+                    effect_vars.add((j, predicate[0], predicate[1]))
                 invariants = csp.variables_at_step(j) - effect_vars
                 for invariant in invariants:
-                    if len(invariant) == 2:
-                        for value in (True, False):
-                            constraint = tuple()
-                            constraint += (act_assignment,)
-                            assignment_bef.variable = (invariant[0],
-                                                       invariant[1])
-                            assignment_bef.value = value
-                            assignment_aft.variable = (invariant[0] + 1,
-                                                       invariant[0])
-                            assignment_aft.value = value
-                            constraint += (assignment_bef, assignment_aft)
-                            csp.constraints.append(constraint)
-                    elif len(invariant) == 3:
-                        for value in csp.domains[invariant]:
-                            constraint = tuple()
-                            constraint += (act_assignment,)
-                            assignment_bef.variable = (invariant[0],
-                                                       invariant[1],
-                                                       invariant[2])
-                            assignment_bef.value = value
-                            assignment_aft.variable = (invariant[0] + 1,
-                                                       invariant[1],
-                                                       invariant[2])
-                            assignment_aft.value = value
-                            constraint += (assignment_bef, assignment_aft)
-                            csp.constraints.append(constraint)
+                    for value in csp.domains[invariant]:
+                        act_assignment = Assignment()
+                        act_assignment.variable = (j, 'act')
+                        act_assignment.value = action
+                        assignment_bef = Assignment()
+                        assignment_aft = Assignment()
+                        constraint = tuple()
+                        constraint += (act_assignment,)
+                        assignment_bef.variable = (invariant[0],
+                                                   invariant[1],
+                                                   invariant[2])
+                        assignment_bef.value = value
+                        assignment_aft.variable = (invariant[0] + 1,
+                                                   invariant[1],
+                                                   invariant[2])
+                        assignment_aft.value = value
+                        constraint += (assignment_bef, assignment_aft)
+                        csp.constraints.append(constraint)
         return csp
-
-
-if __name__ == "__main__":
-    enc = Encoder('../domain/dock-worker-robot-domain.pddl',
-                  '../domain/dock-worker-robot-problem.pddl',
-                  6)
-    print(enc.csp)
