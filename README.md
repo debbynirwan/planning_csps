@@ -19,5 +19,8 @@ example:
 python3 csp.py -d ../domain/dock-worker-robot-domain.pddl -p ../domain/dock-worker-robot-problem.pddl -l 4 --print
 ```
 
+## Documentation
+If you're interested in understanding the details, please read my post [here](https://towardsdatascience.com/ai-planning-using-constraint-satisfaction-problems-eb1be5466af6)
+
 ## Issues
 Please report issues if you found bugs or raise a Pull Request.
