@@ -22,6 +22,9 @@ License:
 from typing import Dict, List, Optional, Tuple
 from abc import ABC, abstractmethod
 from encoder import Encoder, Assignment
+import argparse
+import os
+import sys
 
 
 class Constraint(ABC):
@@ -196,12 +199,57 @@ class FrameAxiomsConstraint(Constraint):
         return True
 
 
+def setup_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Solving CSPs using Backtracking Algorithm",
+        allow_abbrev=False
+    )
+
+    parser.add_argument(
+        "-d", "--domain",
+        required=True,
+        type=str,
+        help="path to pddl domain file"
+    )
+
+    parser.add_argument(
+        "-p", "--problem",
+        required=True,
+        type=str,
+        help="path to pddl problem file"
+    )
+
+    parser.add_argument(
+        "-l", "--length",
+        required=True,
+        type=int,
+        default=1,
+        help="specify the length of steps in formulas encoding"
+    )
+
+    parser.add_argument(
+        "-f", "--print",
+        action='store_true',
+        help="print the result"
+    )
+
+    return parser
+
+
 if __name__ == "__main__":
-    encoder = Encoder('../domain/dock-worker-robot-domain.pddl',
-                      '../domain/dock-worker-robot-problem.pddl',
-                      4)
+
+    args = setup_parser().parse_args()
+    if not os.path.isfile(args.domain) or not os.path.isfile(args.problem):
+        sys.exit(1)
+
+    domain_file = args.domain
+    problem_file = args.problem
+    length = args.length
+    print_debug = args.print
+
+    encoder = Encoder(domain_file, problem_file, length)
     csp = CSP(encoder.csp.variables, encoder.csp.domains)
-    initial_assignments = {}
+
     for constr in encoder.csp.constraints:
         if len(constr) == 1:
             csp.add_constraint(UnaryConstraint(constr))
@@ -212,11 +260,14 @@ if __name__ == "__main__":
         else:
             raise ValueError(f"Unexpected constraint with length "
                              f"= {len(constr)}")
-    solution = csp.backtracking_search(initial_assignments)
-    if solution is None:
-        print("No solution found!")
-    else:
-        import pprint
 
-        pp = pprint.PrettyPrinter()
-        pp.pprint(solution)
+    solution = csp.backtracking_search()
+
+    if print_debug:
+        if solution is None:
+            print("No solution found!")
+        else:
+            import pprint
+
+            pp = pprint.PrettyPrinter()
+            pp.pprint(solution)
